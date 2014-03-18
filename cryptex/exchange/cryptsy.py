@@ -45,6 +45,9 @@ class CryptsyBase(object):
 class CryptsyPublic(CryptsyBase, SingleEndpoint):
     API_ENDPOINT = 'http://pubapi.cryptsy.com/api.php'
 
+    def __init__(self):
+        self._init_http_session()
+
     def perform_get_request(self, method='', params={}):
         return super(CryptsyPublic, self).perform_get_request(method, params)
 
@@ -82,6 +85,8 @@ class CryptsyPublic(CryptsyBase, SingleEndpoint):
 class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
     API_ENDPOINT = 'https://api.cryptsy.com/api'
     def __init__(self, key, secret):
+        self._init_http_session()
+
         self.key = key
         self.secret = secret
         self.market_currency_map = None

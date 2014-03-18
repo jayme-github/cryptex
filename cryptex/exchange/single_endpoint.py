@@ -9,15 +9,24 @@ import requests
 
 from cryptex.exception import APIException
 
+
 class SingleEndpoint(object):
     ''' Simple enpoint for performing any kind of get request '''
+    session = None
+
+    def _init_http_session(self):
+        '''
+        Initialise requests session
+        '''
+        self.session = requests.Session()
+
     def perform_get_request(self, method='', params={}):
         request_url = type(self).API_ENDPOINT
         if method:
             if not request_url.endswith('/'):
                 request_url += '/'
             request_url = urljoin(request_url, method)
-        r = requests.get(request_url, params=params)
+        r = self.session.get(request_url, params=params)
         content = r.json(parse_float=Decimal)
 
         if not content:
@@ -38,10 +47,23 @@ class SignedSingleEndpoint(object):
     "method" parameter.  All requests are POST. All reponses are json, 
     returing an object with keys "success" and "return" (if successful).
     """
+    session = None
+    nonce = None
+    def _init_http_session(self):
+        '''
+        Initialise requests session
+        '''
+        self.nonce = int(time.time())
+        self.session = requests.Session()
+
+    def _new_nonce(self):
+        self.nonce += 1
+        return self.nonce
+
     def get_request_params(self, method, data):
         payload = {
             'method': method,
-            'nonce': int(time.time())
+            'nonce': self._new_nonce()
         }
         payload.update(data)
         signature = hmac.new(self.secret, urlencode(payload), 
@@ -55,7 +77,7 @@ class SignedSingleEndpoint(object):
 
     def perform_request(self, method, data={}):
         payload, headers = self.get_request_params(method, data)
-        r = requests.post(type(self).API_ENDPOINT, data=payload, headers=headers)
+        r = self.session.post(type(self).API_ENDPOINT, data=payload, headers=headers)
         content = r.json(parse_float=Decimal)
 
         # Cryptsy returns success as a string, BTC-e as a int
