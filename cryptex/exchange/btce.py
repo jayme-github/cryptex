@@ -1,6 +1,7 @@
 import datetime
 import pytz
 
+import cryptex.common as common
 from cryptex.exchange import Exchange
 from cryptex.trade import Sell, Buy
 from cryptex.order import SellOrder, BuyOrder
@@ -16,10 +17,22 @@ class BTCEBase(object):
 
     @staticmethod
     def _pair_to_market(pair):
+        '''
+        Convert btc-e pair to cryptex market
+        '''
+        if isinstance(pair, (list, tuple)):
+            # Looks like this is a market tuple
+            return pair
         return tuple([c.upper() for c in pair.split('_')])
 
     @staticmethod
     def _market_to_pair(market):
+        '''
+        Convert btc-e pair to cryptex market
+        '''
+        if not isinstance(market, (list, tuple)):
+            # Looks like this already is a pair
+            return market
         return '_'.join((market[0].lower(), market[1].lower()))
 
 
@@ -49,9 +62,12 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
         
         if ignore_invalid:
             params['ignore_invalid'] = 1
-
-        j = self.perform_get_request('/'.join((method, '-'.join(markets))), params=params)
-        return {x: j[x] for x in j.keys() if x in markets}
+        # FIXME: Needs merge of 16e33e261d9d5bd6b6dc5b23659e697ce6f213f5
+        #j = self.perform_get_request('/'.join((method, '-'.join(markets))), params=params)
+        #return {x: j[x] for x in j.keys() if x in markets}
+        pair = BTCEPublic._market_to_pair(market)
+        j = self.perform_get_request('/'.join((method, pair)), params=params)
+        return j[pair]
 
     def get_info(self):
         '''
@@ -60,6 +76,7 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
         the minimum price, maximum price, minimum quantity purchase / sale,
         hidden=1whether the pair and the pair commission.
         '''
+        #FIXME: Needs parsing pair -> market
         j = self.perform_get_request('info')
         j['server_time'] = BTCEPublic._format_timestamp(j['server_time'])
         return j
@@ -98,6 +115,14 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
             t['timestamp'] = BTCEPublic._format_timestamp(t['timestamp'])
         return j
 
+    def get_trade_fee(self, market, force_update=False):
+        '''
+        Return the fee associated with trades for a given market in percent
+
+        FIXME: This really slows things up and would heavily profit from a persistent disc cache!
+        '''
+        return self._get_market_info('fee', market)
+
 
 class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
     API_ENDPOINT = 'https://btc-e.com/tapi'
@@ -117,12 +142,27 @@ class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
             else:
                 raise e
 
+    def _calc_fee(self, amount, pair):
+        '''
+        Calculate the fees for a trade
+
+        Calculating fees on server side only works via undocumentet ajax api
+        and one needs to know the "pair id" (need to scrape it from webpage)
+        curl 'https://btc-e.com/ajax/order' --data 'calculate=buy&btc_count=10&btc_price=0.02794&pair=10'
+        '''
+        fee_percent = self.public.get_trade_fee(pair)
+        return common.quantize(fee_percent * amount / 100)
+
     def _format_trade(self, trade_id, trade):
         base, counter = BTCE._pair_to_market(trade['pair'])
         if trade['type'] == 'buy':
             trade_type = Buy
+            fee_amount = self._calc_fee(trade['amount'], (base, counter))
+            fee_currency = base
         else:
             trade_type = Sell
+            fee_amount = self._calc_fee(trade['amount'] * trade['rate'], (base, counter))
+            fee_currency = counter
 
         return trade_type(
             trade_id = trade_id,
@@ -132,6 +172,8 @@ class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
             order_id = trade['order_id'],
             amount = trade['amount'],
             price = trade['rate'],
+            fee = fee_amount,
+            fee_currency = fee_currency,
         )
 
     def get_my_trades(self):
@@ -219,3 +261,4 @@ class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
         for key, value in self.perform_request('getInfo')['funds'].iteritems():
             funds[key.upper()] = value
         return funds
+

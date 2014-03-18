@@ -42,6 +42,37 @@ class CryptsyBase(object):
         aware_time = cryptsy_time.normalize(cryptsy_time.localize(naive_time)).astimezone(pytz.utc)
         return aware_time
 
+    @staticmethod
+    def fix_json_types(node, parent=None):
+        '''
+        As Crypts provides every (?) json value as unicode string,
+        this takes a json dict and converts all numeric values to Decimal
+        if their key does not end with '_id'
+        '''
+        if isinstance(node, dict):
+            for key, item in node.items():
+                node[key] = CryptsyBase.fix_json_types(item, key)
+            return node
+        elif isinstance(node, list):
+            for index, item in enumerate(node):
+                node[index] = CryptsyBase.fix_json_types(item, node)
+            return node
+        elif isinstance(node, unicode):
+            if isinstance(parent, unicode) and parent.endswith('_id'):
+                # If key containd _id one would not expect to find a Decimal() instance as value
+                node = int(node)
+            elif isinstance(parent, unicode) and parent.endswith('_code'):
+                # There are currency codes that are Decimal parseable
+                return node
+            else:
+                try:
+                    node = Decimal(node)
+                except InvalidOperation:
+                    pass
+            return node
+        else:
+            return node
+
 class CryptsyPublic(CryptsyBase, SingleEndpoint):
     API_ENDPOINT = 'http://pubapi.cryptsy.com/api.php'
 
@@ -49,7 +80,7 @@ class CryptsyPublic(CryptsyBase, SingleEndpoint):
         self._init_http_session()
 
     def perform_get_request(self, method='', params={}):
-        return super(CryptsyPublic, self).perform_get_request(method, params)
+        return self.fix_json_types(super(CryptsyPublic, self).perform_get_request(method, params))
 
     def get_market_data(self, market_id=None):
         '''
@@ -84,6 +115,7 @@ class CryptsyPublic(CryptsyBase, SingleEndpoint):
 
 class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
     API_ENDPOINT = 'https://api.cryptsy.com/api'
+
     def __init__(self, key, secret):
         self._init_http_session()
 
@@ -93,7 +125,7 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
         self.timezone = None
 
     def perform_request(self, method, data={}):
-        return super(Cryptsy, self).perform_request(method, data)
+        return self.fix_json_types(super(Cryptsy, self).perform_request(method, data))
 
     def _convert_datetime(self, time_str):
         """
@@ -151,9 +183,9 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
             counter_currency = counter,
             datetime = self._convert_datetime(trade['datetime']),
             order_id = trade['order_id'],
-            amount = Decimal(trade['quantity']),
-            price = Decimal(trade['tradeprice']),
-            fee = Decimal(trade['fee'])
+            amount = trade['quantity'],
+            price = trade['tradeprice'],
+            fee = trade['fee'],
             # Cryptsy's fee is always taken from counter_currency
             fee_currency = counter,
         )
@@ -184,8 +216,8 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
             base_currency = base,
             counter_currency = counter,
             datetime = self._convert_datetime(order['created']),
-            amount = Decimal(order['quantity']),
-            price = Decimal(order['price'])
+            amount = order['quantity'],
+            price = order['price']
         )
 
     def get_my_open_orders(self, market=None):
