@@ -65,7 +65,7 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
         # FIXME: Needs merge of 16e33e261d9d5bd6b6dc5b23659e697ce6f213f5
         #j = self.perform_get_request('/'.join((method, '-'.join(markets))), params=params)
         #return {x: j[x] for x in j.keys() if x in markets}
-        pair = BTCEPublic._market_to_pair(market)
+        pair = BTCEPublic._market_to_pair(markets)
         j = self.perform_get_request('/'.join((method, pair)), params=params)
         return j[pair]
 
