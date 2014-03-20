@@ -1,4 +1,3 @@
-import time
 import hmac
 from hashlib import sha512
 from urllib import urlencode
