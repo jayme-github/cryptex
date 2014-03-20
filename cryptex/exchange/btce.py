@@ -34,9 +34,6 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
     '''
     API_ENDPOINT = 'https://btc-e.com/api/3/'
 
-    def __init__(self):
-        self._init_http_session()
-
     def _get_market_info(self, method, markets, limit=0, ignore_invalid=True):
         '''
         Takes a market as reported by the get_info() method -- meaning that it
@@ -103,8 +100,6 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
 class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
     API_ENDPOINT = 'https://btc-e.com/tapi'
     def __init__(self, key, secret):
-        self._init_http_session()
-
         self.key = key
         self.secret = secret
         self.public = BTCEPublic()

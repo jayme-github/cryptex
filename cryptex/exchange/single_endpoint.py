@@ -12,7 +12,7 @@ from cryptex.exception import APIException
 
 class SingleEndpoint(object):
     ''' Simple enpoint for performing any kind of get request '''
-    session = None
+    session = requests
 
     def _init_http_session(self):
         '''
@@ -47,23 +47,18 @@ class SignedSingleEndpoint(object):
     "method" parameter.  All requests are POST. All reponses are json, 
     returing an object with keys "success" and "return" (if successful).
     """
-    session = None
-    nonce = None
+    session = requests
+
     def _init_http_session(self):
         '''
         Initialise requests session
         '''
-        self.nonce = int(time.time())
         self.session = requests.Session()
-
-    def _new_nonce(self):
-        self.nonce += 1
-        return self.nonce
 
     def get_request_params(self, method, data):
         payload = {
             'method': method,
-            'nonce': self._new_nonce()
+            'nonce': int(time.time() * 1000000)
         }
         payload.update(data)
         signature = hmac.new(self.secret, urlencode(payload), 
