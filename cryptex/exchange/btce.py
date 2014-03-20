@@ -1,6 +1,6 @@
 import datetime
-
 import pytz
+import re
 
 from cryptex.exchange import Exchange
 from cryptex.trade import Trade
@@ -110,6 +110,12 @@ class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
         except APIException as e:
             if e.message == 'no orders':
                 return {}
+            elif e.message.startswith('invalid nonce parameter;'):
+                m = re.search('key:(?P<last_nonce>\d+),', e.message)
+                if m and m.groupdict().get('last_nonce'):
+                    self._set_nonce(int(m.groupdict().get('last_nonce')) + 1)
+                    #FIXME: Could cause a loop
+                    return self.perform_request(method, data)
             else:
                 raise e
 

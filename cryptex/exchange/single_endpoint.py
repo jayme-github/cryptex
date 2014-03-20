@@ -4,7 +4,7 @@ from hashlib import sha512
 from urllib import urlencode
 from urlparse import urljoin
 from decimal import Decimal
-
+import itertools
 import requests
 
 from cryptex.exception import APIException
@@ -48,6 +48,12 @@ class SignedSingleEndpoint(object):
     returing an object with keys "success" and "return" (if successful).
     """
     session = requests
+    # Possible thread safe implementation for "as small as possible" nonce
+    # https://mail.python.org/pipermail/python-dev/2004-February/042391.html
+    _get_nonce = itertools.count().next
+
+    def _set_nonce(self, nonce):
+        self._get_nonce = itertools.count(start=nonce).next
 
     def _init_http_session(self):
         '''
@@ -58,7 +64,7 @@ class SignedSingleEndpoint(object):
     def get_request_params(self, method, data):
         payload = {
             'method': method,
-            'nonce': int(time.time() * 1000000)
+            'nonce': self._get_nonce()
         }
         payload.update(data)
         signature = hmac.new(self.secret, urlencode(payload), 
