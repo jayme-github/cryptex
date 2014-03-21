@@ -14,7 +14,7 @@ class Exchange(object):
         """
         raise NotImplementedError
 
-    def get_my_trades(self):
+    def get_my_trades(self, limit=None):
         """
         Returns a list of exchanges.trade.Trade that represent all the user's 
         trades.

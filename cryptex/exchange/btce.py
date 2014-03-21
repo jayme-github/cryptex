@@ -176,7 +176,7 @@ class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
             fee_currency = fee_currency,
         )
 
-    def get_my_trades(self):
+    def get_my_trades(self, limit=None):
         trades = self.perform_request('TradeHistory')
         return [self._format_trade(t_id, t) for t_id, t in trades.iteritems()]
 
