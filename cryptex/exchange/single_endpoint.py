@@ -78,7 +78,13 @@ class SignedSingleEndpoint(object):
     def perform_request(self, method, data={}):
         payload, headers = self.get_request_params(method, data)
         r = self.session.post(type(self).API_ENDPOINT, data=payload, headers=headers)
-        content = r.json(parse_float=Decimal)
+        try:
+            content = r.json(parse_float=Decimal)
+        except ValueError, e:
+            if e.message == 'No JSON object could be decoded':
+                raise ValueError('%s: "%r"' %(e.message, r.content))
+            else:
+                raise ValueError(e)
 
         # Cryptsy returns success as a string, BTC-e as a int
         if int(content['success']) != 1:
