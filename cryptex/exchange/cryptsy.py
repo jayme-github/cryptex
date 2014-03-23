@@ -59,6 +59,7 @@ class CryptsyBase(object):
             return node
         elif isinstance(node, unicode):
             if isinstance(parent, unicode) and parent.endswith('_id'):
+                #FIXME: Does not match on trade_id
                 # If key containd _id one would not expect to find a Decimal() instance as value
                 node = int(node)
             elif isinstance(parent, unicode) and parent.endswith('_code'):
