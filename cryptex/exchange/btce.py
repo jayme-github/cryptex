@@ -45,6 +45,7 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
     TODO: Format market pairs in output
     '''
     API_ENDPOINT = 'https://btc-e.com/api/3/'
+    fee_cache = dict()
 
     def __init__(self):
         self._init_http_session()
@@ -121,7 +122,9 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
 
         FIXME: This really slows things up and would heavily profit from a persistent disc cache!
         '''
-        return self._get_market_info('fee', market)
+        if force_update or market not in self.fee_cache:
+           self.fee_cache[market] = self._get_market_info('fee', market)
+        return self.fee_cache[market]
 
 
 class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
