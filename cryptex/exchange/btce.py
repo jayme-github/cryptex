@@ -7,7 +7,7 @@ from cryptex.trade import Trade
 from cryptex.order import Order
 from cryptex.transaction import Transaction, Deposit, Withdrawal
 from cryptex.exchange.single_endpoint import SingleEndpoint, SignedSingleEndpoint
-from cryptex.exception import APIException
+from cryptex.exception import APIException, InvalidNonce, NonceLimitReached
 
 class BTCEBase(object):
     @staticmethod
@@ -99,25 +99,45 @@ class BTCEPublic(BTCEBase, SingleEndpoint):
 
 class BTCE(BTCEBase, Exchange, SignedSingleEndpoint):
     API_ENDPOINT = 'https://btc-e.com/tapi'
+    _invalid_nonce_loop = False
+
     def __init__(self, key, secret):
         self.key = key
         self.secret = secret
         self.public = BTCEPublic()
 
     def perform_request(self, method, data={}):
+        res = None
         try:
-            return super(BTCE, self).perform_request(method, data)
+            res = super(BTCE, self).perform_request(method, data)
         except APIException as e:
             if e.message == 'no orders':
-                return {}
+                res = {}
             elif e.message.startswith('invalid nonce parameter;'):
+                # Raise if this is the second iteration
+                if self._invalid_nonce_loop:
+                    raise InvalidNonce(e.message)
+
+                # Parse the last nonce from error message
                 m = re.search('key:(?P<last_nonce>\d+),', e.message)
                 if m and m.groupdict().get('last_nonce'):
-                    self._set_nonce(int(m.groupdict().get('last_nonce')) + 1)
-                    #FIXME: Could cause a loop
+                    last_nonce = int(m.groupdict().get('last_nonce'))
+                    if last_nonce >= 4294967294:
+                        raise NonceLimitReached('BTC-e nonce limit reached, please create a new API key')
+
+                    self._invalid_nonce_loop = True
+                    # Set nonce from error message as new start
+                    self._set_nonce(last_nonce)
+                    # And increment by one
+                    self._get_nonce()
+                    # Repeat request
                     return self.perform_request(method, data)
+
+                raise InvalidNonce(e.message)
             else:
                 raise e
+        self._invalid_nonce_loop = False
+        return res
 
     @staticmethod
     def _format_trade(trade_id, trade):
