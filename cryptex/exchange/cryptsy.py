@@ -217,7 +217,6 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
         self.perform_request('cancelorder', {'orderid': order_id})
         return None
 
-
     def _create_order(self, market_id, order_type, quantity, price):
         params = {
             'marketid': market_id,
@@ -253,11 +252,42 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
                 transactions.append(tx_type(t['trxid'],
                                             self._convert_datetime(t['datetime']),
                                             t['currency'],
-                                            t['amount'],
+                                            Decimal(t['amount']),
                                             t['address'],
-                                            t['fee'],
+                                            Decimal(t['fee']),
                                     ))
+        transactions.extend(self._get_my_transfers())
         return transactions
 
     def get_my_funds(self):
-        return self._get_info()['balances_available']
+        funds = self._get_info()['balances_available']
+        for key, value in funds:
+            funds[key] = Decimal(value)
+        return funds
+
+    def _get_my_transfers(self):
+        '''
+        Get Cryptsy's internal transactions/transfers and treat them as Deposit/Withdrawal
+        TODO: May have an undocumented limit too
+        '''
+
+        # generate a "unique" used as hash as transaction_id
+        generate_transaction_id =  lambda t: hash(frozenset(t.items()))
+
+        transfers = []
+        for t in self.perform_request('mytransfers'):
+            if t['processed'] != 1:
+                # Not processed yet, skipp
+                continue
+            t_type = Transaction
+            if t['direction'] == 'in':
+                t_type = Deposit
+            elif t['direction'] == 'out':
+                t_type = Withdrawal
+
+            transfers.append(t_type(generate_transaction_id(t),
+                                    self._convert_datetime(t['processed_timestamp']),
+                                    t['currency'],
+                                    Decimal(t['quantity']),
+                                    t['to']))
+        return transfers
