@@ -265,7 +265,7 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
         TODO: May have an undocumented limit too
         '''
 
-        # generate a "unique" used as hash as transaction_id
+        # generate a "unique" hash used as hash as transaction_id
         generate_transaction_id =  lambda t: hash(frozenset(t.items()))
 
         transfers = []
