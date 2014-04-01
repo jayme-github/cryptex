@@ -156,7 +156,7 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
             price = Decimal(trade['tradeprice']),
             fee = Decimal(trade['fee']),
             # Cryptsy's fee is always taken from counter_currency
-            fee_currency = counter,
+            fee_currency = counter
         )
 
     def get_my_trades(self, limit=200, market=None):
