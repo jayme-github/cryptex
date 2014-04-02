@@ -1,3 +1,5 @@
+import cryptex.common as common
+
 class Transaction(object):
     '''
     Transaction that is neither deopsit nor withdrawal
@@ -19,8 +21,25 @@ class Transaction(object):
         return '<%s transaction of %.8f %s>' % (self.type(),
                                                 self.amount,
                                                 self.currency)
+
+    def netto_amount(self):
+        '''
+        Return the netto amount of this transaction
+        '''
+        raise NotImplemented
+
 class Deposit(Transaction):
     transaction_type = 1
 
+    def netto_amount(self):
+        if self.fee:
+            return common.quantize(self.amount - self.fee)
+        return self.amount
+
 class Withdrawal(Transaction):
     transaction_type = 2
+
+    def netto_amount(self):
+        if self.fee:
+            return common.quantize(self.amount + self.fee)
+        return self.amount

@@ -42,25 +42,49 @@ class Trade(object):
                                     self.amount,
                                     self.base_currency)
 
+    def netto_amount(self):
+        '''
+        '''
+        return NotImplemented
+
+    def netto_total(self):
+        '''
+        Return the total price that was paid or received
+        '''
+        return NotImplemented
 
 class Buy(Trade):
     trade_type = 1
 
     def netto_amount(self):
-        if self.fee is not None:
+        if self.fee and \
+                self.fee_currency == self.base_currency:
             return common.quantize(self.amount - self.fee)
+
         return self.amount
 
     def netto_total(self):
-        return common.quantize(self.amount * self.price)
+        total = self.amount * self.price
+        if self.fee and \
+                self.fee_currency == self.counter_currency:
+            return common.quantize(total + self.fee)
+
+        return common.quantize(total)
 
 class Sell(Trade):
     trade_type = 2
 
     def netto_amount(self):
+        if self.fee and \
+                self.fee_currency == self.base_currenc:
+            return common.quantize(self.amount + self.fee)
+
         return self.amount
 
     def netto_total(self):
-        if self.fee is not None:
-            return common.quantize((self.amount * self.price) - self.fee)
-        return common.quantize(self.amount * self.price)
+        total = self.amount * self.price
+        if self.fee and \
+                self.fee_currency == self.counter_currency:
+            return common.quantize(total - self.fee)
+
+        return common.quantize(total)
