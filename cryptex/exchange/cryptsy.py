@@ -268,9 +268,7 @@ class Cryptsy(CryptsyBase, Exchange, SignedSingleEndpoint):
     def _get_my_transfers(self):
         '''
         Get Cryptsy's internal transactions/transfers and treat them as Deposit/Withdrawal
-        TODO: May have an undocumented limit too
         '''
-
         # generate a "unique" hash used as hash as transaction_id
         generate_transaction_id =  lambda t: hash(frozenset(t.items()))
 
