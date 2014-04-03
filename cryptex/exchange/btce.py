@@ -1,7 +1,7 @@
 import datetime
 import pytz
 import re
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 
 from cryptex.exchange import Exchange
 from cryptex.trade import Sell, Buy
@@ -10,6 +10,8 @@ from cryptex.transaction import Transaction, Deposit, Withdrawal
 from cryptex.exchange.single_endpoint import SingleEndpoint, SignedSingleEndpoint
 from cryptex.exception import APIException
 import cryptex.common as common
+
+common.ROUNDING = ROUND_DOWN
 
 class BTCEBase(object):
     @staticmethod

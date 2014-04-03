@@ -6,6 +6,7 @@ decimal.DefaultContext.traps[decimal.InvalidOperation] = 1
 decimal.setcontext(decimal.DefaultContext)
 
 DECIMAL_PRECISION = decimal.Decimal(10) ** -8
+ROUNDING = decimal.ROUND_HALF_EVEN
 
 def quantize(decimal_value):
-	return decimal_value.quantize(DECIMAL_PRECISION)
+	return decimal_value.quantize(DECIMAL_PRECISION, ROUNDING)
